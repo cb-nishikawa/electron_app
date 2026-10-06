@@ -1,0 +1,35 @@
+---
+description: 作業前に AGENTS.md と changelog を読み、作業後に changelog / ADR を残す
+alwaysApply: true
+---
+
+# ドキュメント・ログ運用
+
+詳細は [AGENTS.md](../../AGENTS.md) が正。ここでは必ず守る手順だけを示す。
+
+## 作業前
+
+1. `AGENTS.md` を読む
+2. `changelog/` を日付が新しいファイルから読む
+3. 関連する `docs/ai/decisions/` の ADR を読む
+
+## 作業後
+
+- `changelog/YYYY-MM-DD.md`（当日分）に追記する。なければ新規作成（先頭 `# YYYY-MM-DD`、`##` 見出し + 箇条書き）
+- 設計に影響する判断は `docs/ai/decisions/ADR-NNN-短い英語スラッグ.md` を追加し、changelog からリンクする（テンプレート: `ADR-000-template.md`）
+- 仕様のたたき台は `docs/specs/` に置く
+
+例（`changelog/2026-10-07.md`）:
+
+```markdown
+# 2026-10-07
+
+## 設定画面
+
+- 設定の保存先を `app.getPath("userData")` 配下に変更（[ADR-001](../docs/ai/decisions/ADR-001-settings-storage.md)）
+```
+
+## その他
+
+- changelog / ADR / 仕様は日本語で書く
+- `_sample/` は参照専用。変更しない
