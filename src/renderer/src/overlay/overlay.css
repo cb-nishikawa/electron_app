@@ -1,0 +1,194 @@
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  user-select: none;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', 'Segoe UI', sans-serif;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  box-sizing: border-box;
+}
+
+/* クリックを確実に受け取るため、操作可能なモードではごく薄く塗る */
+.overlay--record {
+  cursor: crosshair;
+  background: rgba(255, 64, 96, 0.04);
+  border: 3px dashed rgba(255, 64, 96, 0.85);
+}
+
+.overlay--edit {
+  background: rgba(64, 160, 255, 0.04);
+  border: 3px dashed rgba(64, 160, 255, 0.85);
+}
+
+.overlay--run {
+  border: 3px solid rgba(64, 200, 120, 0.7);
+}
+
+.overlay--run-error {
+  border-color: rgba(255, 64, 96, 0.85);
+}
+
+.run-indicator {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.run-indicator__ring {
+  position: absolute;
+  left: -18px;
+  top: -18px;
+  width: 36px;
+  height: 36px;
+  box-sizing: border-box;
+  border: 3px solid #40c878;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.4);
+  animation: run-pulse 0.9s ease-out infinite;
+}
+
+.run-indicator__badge {
+  position: absolute;
+  left: 18px;
+  top: 14px;
+  padding: 2px 8px;
+  border-radius: 11px;
+  background: #40c878;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.run-indicator--paused .run-indicator__ring {
+  border-color: #f0b030;
+  animation: none;
+}
+
+.run-indicator--paused .run-indicator__badge {
+  background: #f0b030;
+}
+
+.run-indicator--error .run-indicator__ring {
+  border-color: #ff4060;
+  animation: none;
+}
+
+.run-indicator--error .run-indicator__badge {
+  background: #ff4060;
+}
+
+@keyframes run-pulse {
+  from {
+    transform: scale(0.7);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.4);
+    opacity: 0.3;
+  }
+}
+
+/* アプリ指定中は、どのウィンドウが対象か分かるよう通常モードでも細い枠を出す */
+.overlay--window-target.overlay--normal {
+  border: 2px solid rgba(255, 64, 96, 0.6);
+}
+
+.overlay--window-target .overlay__hint {
+  top: 8px;
+  font-size: 12px;
+}
+
+.overlay__hint {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(20, 20, 24, 0.85);
+  color: #fff;
+  font-size: 13px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.marker {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.marker__dot {
+  position: absolute;
+  left: -5px;
+  top: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff4060;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 6px rgba(0, 0, 0, 0.5);
+}
+
+.marker__badge {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 11px;
+  background: #ff4060;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 22px;
+  text-align: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.marker--edit {
+  cursor: grab;
+}
+
+/* ドラッグ用の当たり判定を広げる */
+.marker--edit::before {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+.marker--edit:active {
+  cursor: grabbing;
+}
+
+.marker--edit .marker__dot,
+.marker--edit .marker__badge {
+  background: #40a0ff;
+}
+
+.marker--run .marker__dot,
+.marker--run .marker__badge {
+  background: #40c878;
+}

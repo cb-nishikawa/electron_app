@@ -1,0 +1,23 @@
+export const IpcChannels = {
+  overlayGetState: 'overlay:get-state',
+  overlaySetMode: 'overlay:set-mode',
+  overlaySetVisible: 'overlay:set-visible',
+  overlayStateChanged: 'overlay:state-changed',
+  overlaySetTarget: 'overlay:set-target',
+  windowsList: 'windows:list',
+  markerList: 'marker:list',
+  markerAdd: 'marker:add',
+  markerUpdate: 'marker:update',
+  markerMove: 'marker:move',
+  markerRemove: 'marker:remove',
+  markerClear: 'marker:clear',
+  markersChanged: 'markers:changed',
+  cursorGetPosition: 'cursor:get-position',
+  runGetState: 'run:get-state',
+  runStart: 'run:start',
+  runPause: 'run:pause',
+  runResume: 'run:resume',
+  runStop: 'run:stop',
+  runRetry: 'run:retry',
+  runStateChanged: 'run:state-changed'
+} as const

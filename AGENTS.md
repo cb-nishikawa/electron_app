@@ -1,6 +1,7 @@
 # AGENTS.md（このリポジトリの正）
 
-Electron アプリ（アプリ名: `TODO`）向けの AI・人間共通ルール。  
+Electron アプリ「らいぶレンズ」（`live-lens`。透明オーバーレイで画面操作を登録・記録・実行する自動操作ツール）向けの AI・人間共通ルール。  
+要件は [`docs/specs/live-lens-requirements.md`](docs/specs/live-lens-requirements.md)。
 矛盾がある場合は **本書を `docs/ai/shared-rules.md` より優先**する。
 
 ## 守ること
@@ -37,8 +38,13 @@ Electron アプリ（アプリ名: `TODO`）向けの AI・人間共通ルール
   - main: ウィンドウ管理・OS / ファイル I/O・IPC ハンドラ
   - preload: `contextBridge` で renderer に公開する API のみを定義
   - renderer: UI。Node.js API へ直接アクセスしない
-- `BrowserWindow` は `contextIsolation: true` / `nodeIntegration: false` を既定とし、IPC は preload 経由に限定する
-- コマンド（プロジェクト作成後に確定させる）
-  - 開発起動: `npm run dev`（TODO）
-  - ビルド: `npm run build`（TODO）
-  - パッケージ: `npm run package`（TODO）
+- `BrowserWindow` は `contextIsolation: true` / `nodeIntegration: false` / `sandbox: true` を既定とし、IPC は preload 経由に限定する
+- OS 操作（マウス・キーボード・画面キャプチャ）は main プロセスだけで行う。renderer からは IPC で依頼する
+- 構成: electron-vite + React + TypeScript。ウィンドウ構成は [ADR-001](docs/ai/decisions/ADR-001-overlay-window-architecture.md)、アプリ指定（ウィンドウ対象）は [ADR-002](docs/ai/decisions/ADR-002-app-window-target.md)、順次実行は [ADR-003](docs/ai/decisions/ADR-003-sequential-run.md)
+  - `src/main/`: main プロセス / `src/preload/`: `window.liveLens` / `src/shared/`: 型と IPC チャネル名 / `src/renderer/`: `index.html`（操作パネル）と `overlay.html`（オーバーレイ）
+- コマンド
+  - 開発起動: `npm run dev`
+  - lint: `npm run lint` / 型チェック: `npm run typecheck`
+  - ビルド: `npm run build`（typecheck を含む）
+  - パッケージ: `npm run build:mac` / `npm run build:win`
+- 実装後は `npm run lint` と `npm run build` を通す
