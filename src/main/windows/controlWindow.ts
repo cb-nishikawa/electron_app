@@ -11,6 +11,9 @@ export function createControlWindow(): BrowserWindow {
     title: 'らいぶレンズ',
     show: false,
     autoHideMenuBar: true,
+    // macOS 15+ では frame + transparent だとネイティブのタイトルバー（信号機）が描画されない。
+    // タイトルバーを隠して信号機だけオーバーレイ表示にする
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const } : {}),
     // 背景を 90% 透過にする（描画は CSS 側で制御）
     transparent: true,
     backgroundColor: '#00000000',

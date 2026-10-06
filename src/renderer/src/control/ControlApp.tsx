@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { OVERLAY_MODES, type Marker, type RunState } from '@shared/types'
 import { MODE_LABELS } from '../shared/modeLabels'
 import { useLiveLensState } from '../shared/useLiveLensState'
@@ -10,10 +10,38 @@ import TargetSection from './TargetSection'
 import { useCursorPosition } from './useCursorPosition'
 
 const isMac = navigator.userAgent.includes('Mac')
-const mod = isMac ? '⌘' : 'Ctrl'
 
 /** 実行モードは「実行」セクションから開始する */
 const SELECTABLE_MODES = OVERLAY_MODES.filter((mode) => mode !== 'run')
+
+const TRANSPARENCY_KEY = 'live-lens.transparency'
+const MIN_TRANSPARENCY = 10
+const MAX_TRANSPARENCY = 100
+const DEFAULT_TRANSPARENCY = 10
+
+function loadTransparency(): number {
+  try {
+    const raw = localStorage.getItem(TRANSPARENCY_KEY)
+    if (raw === null) return DEFAULT_TRANSPARENCY
+    const value = Number.parseInt(raw, 10)
+    if (!Number.isFinite(value)) return DEFAULT_TRANSPARENCY
+    return Math.min(MAX_TRANSPARENCY, Math.max(MIN_TRANSPARENCY, value))
+  } catch {
+    return DEFAULT_TRANSPARENCY
+  }
+}
+
+function applyTransparency(transparency: number): void {
+  // 背景の濃さ 10% → alpha 0.1（ほぼ透明）。100% で alpha 1.0（背景が不透明）
+  const alpha = transparency / 100
+  document.documentElement.style.setProperty('--surface-alpha', String(alpha))
+}
+
+// 描画前に適用し、初期表示のフラッシュを防ぐ
+const initialTransparency = loadTransparency()
+applyTransparency(initialTransparency)
+// macOS は信号機ボタンの領域を確保するため、ヘッダーにパディングを足す
+document.documentElement.dataset.platform = isMac ? 'mac' : 'other'
 
 function runMarkOf(marker: Marker, run: RunState | null): MarkerRunMark {
   if (!run) return null
@@ -29,6 +57,16 @@ function ControlApp(): React.JSX.Element {
   const api = window.liveLens
   const running = !!run && run.status !== 'idle'
   const [view, setView] = useState<PanelView>('record')
+  const [transparency, setTransparency] = useState(initialTransparency)
+
+  useEffect(() => {
+    applyTransparency(transparency)
+    try {
+      localStorage.setItem(TRANSPARENCY_KEY, String(transparency))
+    } catch {
+      // 保存できなくても動作は続ける
+    }
+  }, [transparency])
 
   return (
     <div className="control">
@@ -102,15 +140,20 @@ function ControlApp(): React.JSX.Element {
       )}
 
       <footer className="control__footer">
-        <p>
-          <kbd>{mod}</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> オーバーレイ表示切替
-        </p>
-        <p>
-          <kbd>{mod}</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> 通常モードに戻る / 実行を停止
-        </p>
-        <p>
-          <kbd>Esc</kbd> 実行を停止（実行中のみ）
-        </p>
+        <label className="control__opacity">
+          <span aria-hidden="true" className="control__opacity__icon">
+            ◐
+          </span>
+          <input
+            type="range"
+            aria-label="背景の濃さ"
+            min={MIN_TRANSPARENCY}
+            max={MAX_TRANSPARENCY}
+            step={1}
+            value={transparency}
+            onChange={(e) => setTransparency(Number(e.target.value))}
+          />
+        </label>
       </footer>
     </div>
   )

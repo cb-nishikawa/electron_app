@@ -1,8 +1,9 @@
 :root {
   color-scheme: light dark;
-  /* 背景は 90% 透過（見え方 10%）。文字・枠線は不透明のまま */
-  --bg: rgba(246, 246, 248, 0.1);
-  --panel: rgba(255, 255, 255, 0.1);
+  /* 背景の濃さ。スライダーで操作（既定 10% = alpha 0.1（ほぼ透明）。100% で背景が不透明） */
+  --surface-alpha: 0.1;
+  --bg: rgba(246, 246, 248, var(--surface-alpha));
+  --panel: rgba(255, 255, 255, var(--surface-alpha));
   /* ポップアップなど読みやすさが必要な面だけ不透明にする */
   --surface-solid: #ffffff;
   --text: #1d1d22;
@@ -16,8 +17,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: rgba(27, 27, 31, 0.1);
-    --panel: rgba(36, 36, 42, 0.1);
+    --bg: rgba(27, 27, 31, var(--surface-alpha));
+    --panel: rgba(36, 36, 42, var(--surface-alpha));
     --surface-solid: #24242a;
     --text: #ececf1;
     --muted: #9a9aa6;
@@ -43,9 +44,36 @@ body,
   gap: 12px;
 }
 
+/* パネル内のどこからでもドラッグでウィンドウ移動できるようにする。
+   -webkit-app-region は継承されないため、構造要素すべてに明示する */
+.control,
+.control__header,
+.control__record,
+.control__footer,
+.section {
+  -webkit-app-region: drag;
+}
+
+/* 操作できる要素とスクロール領域だけドラッグから除外（クリック・スクロールを維持） */
+.control button,
+.control input,
+.control select,
+.control label,
+.control .mode-select,
+.control .mode-select__menu,
+.control .marker-list,
+.section--grow {
+  -webkit-app-region: no-drag;
+}
+
 .control__header {
   position: relative;
   z-index: 10;
+}
+
+/* macOS は信号機ボタン（閉じる/最小化/最大化）と ModeSelect が重ならないように領域を空ける */
+html[data-platform='mac'] .control__header {
+  padding-left: 78px;
 }
 
 .control__record {
@@ -385,17 +413,27 @@ code {
 }
 
 .control__footer {
+  /* コンテンツの表示/非表示に関わらずフッターを常に最下部に固定する */
+  margin-top: auto;
   color: var(--muted);
   font-size: 12px;
 }
 
-.control__footer p {
-  margin: 2px 0;
+.control__opacity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-kbd {
-  padding: 0 4px;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  font-family: inherit;
+.control__opacity__icon {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.control__opacity input[type='range'] {
+  /* パネル幅の約 1/3 */
+  flex: 0 0 33.333%;
+  min-width: 0;
+  accent-color: var(--accent);
 }

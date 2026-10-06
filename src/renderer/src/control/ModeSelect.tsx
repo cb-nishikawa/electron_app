@@ -22,8 +22,16 @@ function ModeSelect({
     const handlePointerDown = (e: PointerEvent): void => {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
     }
+    // ドラッグ領域（app-region）では pointerdown がページに届かないため Esc でも閉じられるようにする
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setOpen(false)
+    }
     document.addEventListener('pointerdown', handlePointerDown)
-    return () => document.removeEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [open])
 
   const current = VIEW_OPTIONS.find((option) => option.value === value)
