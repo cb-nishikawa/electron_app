@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react'
-import { OVERLAY_MODES, type Marker, type RunState } from '@shared/types'
-import { MODE_LABELS } from '../shared/modeLabels'
+import { useEffect, useRef, useState } from 'react'
+import type { Marker, RunState } from '@shared/types'
 import { useLiveLensState } from '../shared/useLiveLensState'
 import { useRunState } from '../shared/useRunState'
 import MarkerRow, { type MarkerRunMark } from './MarkerRow'
@@ -8,11 +7,9 @@ import ModeSelect, { type PanelView } from './ModeSelect'
 import RunSection from './RunSection'
 import TargetSection from './TargetSection'
 import { useCursorPosition } from './useCursorPosition'
+import { toMessage } from '../shared/ipcError'
 
 const isMac = navigator.userAgent.includes('Mac')
-
-/** 実行モードは「実行」セクションから開始する */
-const SELECTABLE_MODES = OVERLAY_MODES.filter((mode) => mode !== 'run')
 
 const TRANSPARENCY_KEY = 'live-lens.transparency'
 const MIN_TRANSPARENCY = 10
@@ -58,6 +55,9 @@ function ControlApp(): React.JSX.Element {
   const running = !!run && run.status !== 'idle'
   const [view, setView] = useState<PanelView>('record')
   const [transparency, setTransparency] = useState(initialTransparency)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     applyTransparency(transparency)
@@ -67,6 +67,22 @@ function ControlApp(): React.JSX.Element {
       // 保存できなくても動作は続ける
     }
   }, [transparency])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const handlePointerDown = (e: PointerEvent): void => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false)
+    }
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [menuOpen])
 
   return (
     <div className="control">
@@ -79,47 +95,79 @@ function ControlApp(): React.JSX.Element {
           <TargetSection state={state} disabled={running} />
 
           <section className="section">
-            <h2>オーバーレイ</h2>
-            <div className="mode-buttons">
-              {SELECTABLE_MODES.map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  className={state?.mode === mode ? 'is-active' : undefined}
-                  disabled={running}
-                  onClick={() => api.setMode(mode)}
-                >
-                  {MODE_LABELS[mode]}
-                </button>
-              ))}
-            </div>
-            <label className="toggle">
-              <input
-                type="checkbox"
-                checked={state?.visible ?? false}
-                onChange={(e) => api.setOverlayVisible(e.target.checked)}
-              />
-              オーバーレイを表示
-            </label>
             <p className="cursor">
               カーソル座標: <code>{cursor ? `${cursor.x}, ${cursor.y}` : '—'}</code>
             </p>
+            <RunSection run={run} markerCount={markers.length} />
           </section>
-
-          <RunSection run={run} markerCount={markers.length} />
 
           <section className="section section--grow">
             <div className="section__title">
               <h2>操作対象（{markers.length}）</h2>
-              <button
-                type="button"
-                className="link-button"
-                disabled={markers.length === 0 || running}
-                onClick={() => api.clearMarkers()}
-              >
-                すべて削除
-              </button>
+              <div className="marker-actions">
+                <button
+                  type="button"
+                  className={`icon-btn ${state?.mode === 'record' ? 'is-active' : ''}`}
+                  disabled={running}
+                  onClick={() => api.setMode(state?.mode === 'record' ? 'normal' : 'record')}
+                  title={state?.mode === 'record' ? '録画停止' : '録画開始'}
+                >
+                  {state?.mode === 'record' ? '⏹' : '⏺'}
+                </button>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  disabled={
+                    markers.length === 0 ||
+                    running ||
+                    run?.status === 'running' ||
+                    run?.status === 'paused'
+                  }
+                  onClick={() => {
+                    setError(null)
+                    api.startRun().catch((e) => setError(toMessage(e)))
+                  }}
+                  title="実行"
+                >
+                  ▶
+                </button>
+                <div className="menu-container" ref={menuRef}>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    disabled={running}
+                    onClick={() => setMenuOpen((prev) => !prev)}
+                    title="メニュー"
+                  >
+                    ☰
+                  </button>
+                  {menuOpen && (
+                    <div className="menu-dropdown">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          api.setMode(state?.mode === 'edit' ? 'normal' : 'edit')
+                          setMenuOpen(false)
+                        }}
+                      >
+                        編集
+                      </button>
+                      <button
+                        type="button"
+                        disabled={markers.length === 0}
+                        onClick={() => {
+                          api.clearMarkers()
+                          setMenuOpen(false)
+                        }}
+                      >
+                        すべて削除
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
+            {error && <p className="run-message run-message--error">{error}</p>}
             {markers.length === 0 ? (
               <p className="empty">記録モードでオーバーレイをクリックすると登録されます</p>
             ) : (
@@ -140,20 +188,30 @@ function ControlApp(): React.JSX.Element {
       )}
 
       <footer className="control__footer">
-        <label className="control__opacity">
-          <span aria-hidden="true" className="control__opacity__icon">
-            ◐
-          </span>
-          <input
-            type="range"
-            aria-label="背景の濃さ"
-            min={MIN_TRANSPARENCY}
-            max={MAX_TRANSPARENCY}
-            step={1}
-            value={transparency}
-            onChange={(e) => setTransparency(Number(e.target.value))}
-          />
-        </label>
+        <div className="footer-controls">
+          <button
+            type="button"
+            className={`icon-btn ${state?.visible ? 'is-active' : ''}`}
+            onClick={() => api.setOverlayVisible(!state?.visible)}
+            title="オーバーレイ表示切替"
+          >
+            {state?.visible ? '👁' : '👁‍🗨'}
+          </button>
+          <label className="control__opacity">
+            <span aria-hidden="true" className="control__opacity__icon">
+              ◐
+            </span>
+            <input
+              type="range"
+              aria-label="背景の濃さ"
+              min={MIN_TRANSPARENCY}
+              max={MAX_TRANSPARENCY}
+              step={1}
+              value={transparency}
+              onChange={(e) => setTransparency(Number(e.target.value))}
+            />
+          </label>
+        </div>
       </footer>
     </div>
   )

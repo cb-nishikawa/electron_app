@@ -27,11 +27,12 @@ function RunSection({
     run && run.currentIndex !== null ? `${run.currentIndex + 1} / ${run.total}` : null
 
   return (
-    <section className="section">
-      <div className="section__title">
-        <h2>実行</h2>
-        {progress && <span className="run-progress">{progress}</span>}
-      </div>
+    <div>
+      {progress && (
+        <div className="section__title">
+          <span className="run-progress">{progress}</span>
+        </div>
+      )}
 
       {status === 'idle' && (
         <div className="run-buttons">
@@ -89,7 +90,7 @@ function RunSection({
         <p className="run-message">{RESULT_LABELS[run.lastResult]}</p>
       )}
       {error && <p className="run-message run-message--error">{error}</p>}
-    </section>
+    </div>
   )
 }
 
