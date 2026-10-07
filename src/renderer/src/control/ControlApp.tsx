@@ -8,6 +8,15 @@ import RunSection from './RunSection'
 import TargetSection from './TargetSection'
 import { useCursorPosition } from './useCursorPosition'
 import { toMessage } from '../shared/ipcError'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent
+} from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 
 const isMac = navigator.userAgent.includes('Mac')
 
@@ -56,8 +65,10 @@ function ControlApp(): React.JSX.Element {
   const [view, setView] = useState<PanelView>('record')
   const [transparency, setTransparency] = useState(initialTransparency)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const addMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     applyTransparency(transparency)
@@ -83,6 +94,34 @@ function ControlApp(): React.JSX.Element {
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [menuOpen])
+
+  useEffect(() => {
+    if (!addMenuOpen) return
+    const handlePointerDown = (e: PointerEvent): void => {
+      if (!addMenuRef.current?.contains(e.target as Node)) setAddMenuOpen(false)
+    }
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setAddMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [addMenuOpen])
+
+  const sensors = useSensors(useSensor(PointerSensor))
+
+  const handleDragEnd = (event: DragEndEvent): void => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const fromIndex = markers.findIndex((m) => m.id === active.id)
+    const toIndex = markers.findIndex((m) => m.id === over.id)
+    if (fromIndex !== -1 && toIndex !== -1) {
+      api.reorderMarkers(fromIndex, toIndex)
+    }
+  }
 
   return (
     <div className="control">
@@ -131,6 +170,48 @@ function ControlApp(): React.JSX.Element {
                 >
                   ▶
                 </button>
+                <div className="menu-container" ref={addMenuRef}>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    disabled={running}
+                    onClick={() => setAddMenuOpen((prev) => !prev)}
+                    title="追加"
+                  >
+                    +
+                  </button>
+                  {addMenuOpen && (
+                    <div className="menu-dropdown">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          api.addMarker('text')
+                          setAddMenuOpen(false)
+                        }}
+                      >
+                        テキスト
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          api.addMarker('hotkey')
+                          setAddMenuOpen(false)
+                        }}
+                      >
+                        ホットキー
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          api.addMarker('delay')
+                          setAddMenuOpen(false)
+                        }}
+                      >
+                        遅延
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div className="menu-container" ref={menuRef}>
                   <button
                     type="button"
@@ -171,17 +252,28 @@ function ControlApp(): React.JSX.Element {
             {markers.length === 0 ? (
               <p className="empty">記録モードでオーバーレイをクリックすると登録されます</p>
             ) : (
-              <ol className="marker-list">
-                {markers.map((marker, index) => (
-                  <MarkerRow
-                    key={marker.id}
-                    marker={marker}
-                    index={index}
-                    runMark={runMarkOf(marker, run)}
-                    locked={running}
-                  />
-                ))}
-              </ol>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={markers.map((m) => m.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <ol className="marker-list">
+                    {markers.map((marker, index) => (
+                      <MarkerRow
+                        key={marker.id}
+                        marker={marker}
+                        index={index}
+                        runMark={runMarkOf(marker, run)}
+                        locked={running}
+                      />
+                    ))}
+                  </ol>
+                </SortableContext>
+              </DndContext>
             )}
           </section>
         </div>

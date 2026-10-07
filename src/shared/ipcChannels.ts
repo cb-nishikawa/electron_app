@@ -11,6 +11,7 @@ export const IpcChannels = {
   markerMove: 'marker:move',
   markerRemove: 'marker:remove',
   markerClear: 'marker:clear',
+  markerReorder: 'marker:reorder',
   markersChanged: 'markers:changed',
   cursorGetPosition: 'cursor:get-position',
   runGetState: 'run:get-state',

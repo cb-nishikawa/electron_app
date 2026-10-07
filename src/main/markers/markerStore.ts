@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto'
 import {
   DEFAULT_WAIT_AFTER_MS,
+  type ActionItemType,
   type ClickTarget,
   type Marker,
   type MarkerPatch
@@ -16,14 +17,23 @@ export class MarkerStore {
     return [...this.markers]
   }
 
-  add(target: ClickTarget): Marker {
+  add(target?: ClickTarget, itemType?: ActionItemType): Marker {
     this.serial += 1
+    const type = itemType ?? 'click'
     const marker: Marker = {
       id: randomUUID(),
       label: `操作対象 ${this.serial}`,
-      target,
+      target: target as ClickTarget,
       action: 'click',
-      waitAfterMs: DEFAULT_WAIT_AFTER_MS
+      waitAfterMs: DEFAULT_WAIT_AFTER_MS,
+      itemType: type
+    }
+    if (type === 'text') {
+      marker.text = ''
+    } else if (type === 'hotkey') {
+      marker.keys = []
+    } else if (type === 'delay') {
+      marker.delayMs = 1000
     }
     this.markers.push(marker)
     this.emit()
@@ -55,6 +65,21 @@ export class MarkerStore {
     this.serial = 0
     if (this.markers.length === 0) return
     this.markers = []
+    this.emit()
+  }
+
+  reorder(fromIndex: number, toIndex: number): void {
+    if (
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= this.markers.length ||
+      toIndex >= this.markers.length ||
+      fromIndex === toIndex
+    ) {
+      return
+    }
+    const [item] = this.markers.splice(fromIndex, 1)
+    this.markers.splice(toIndex, 0, item)
     this.emit()
   }
 

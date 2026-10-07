@@ -102,34 +102,50 @@ export function registerIpc({
 
   ipcMain.handle(IpcChannels.markerList, () => markerStore.list())
 
-  ipcMain.handle(IpcChannels.markerAdd, (event, clientPoint: unknown) => {
+  ipcMain.handle(IpcChannels.markerAdd, (event, clientPoint: unknown, itemType?: unknown) => {
     if (event.sender !== overlay.webContents) return null
     const { mode, target } = modeManager.getState()
+
+    const allowedType = (value: unknown): value is 'click' | 'text' | 'hotkey' | 'delay' =>
+      typeof value === 'string' && ['click', 'text', 'hotkey', 'delay'].includes(value)
+
+    // 手動追加（+ボタン）: clientPoint が null の場合
+    if (clientPoint === null) {
+      const type = allowedType(itemType) ? itemType : 'text'
+      return markerStore.add(undefined, type)
+    }
+
     if (mode !== 'record') return null
     if (!isScreenPoint(clientPoint)) throw new Error('座標が不正です')
 
     // オーバーレイは対象ウィンドウに重なっているので、クライアント座標がそのままウィンドウ内の相対座標になる
     if (target.kind === 'window') {
       const { ownerName, bundleId, path, title } = target.window
-      return markerStore.add({
-        type: 'windowCoordinate',
-        x: Math.round(clientPoint.x),
-        y: Math.round(clientPoint.y),
-        window: { ownerName, bundleId, path, title }
-      })
+      return markerStore.add(
+        {
+          type: 'windowCoordinate',
+          x: Math.round(clientPoint.x),
+          y: Math.round(clientPoint.y),
+          window: { ownerName, bundleId, path, title }
+        },
+        'click'
+      )
     }
 
     const origin = overlay.getBounds()
     const x = Math.round(origin.x + clientPoint.x)
     const y = Math.round(origin.y + clientPoint.y)
     const display = screen.getDisplayNearestPoint({ x, y })
-    return markerStore.add({
-      type: 'coordinate',
-      x,
-      y,
-      displayId: display.id,
-      scaleFactor: display.scaleFactor
-    })
+    return markerStore.add(
+      {
+        type: 'coordinate',
+        x,
+        y,
+        displayId: display.id,
+        scaleFactor: display.scaleFactor
+      },
+      'click'
+    )
   })
 
   ipcMain.handle(IpcChannels.markerUpdate, (_event, id: unknown, patch: unknown) => {
@@ -183,6 +199,14 @@ export function registerIpc({
   ipcMain.handle(IpcChannels.markerClear, () => {
     rejectWhileRunning()
     markerStore.clear()
+  })
+
+  ipcMain.handle(IpcChannels.markerReorder, (_event, fromIndex: unknown, toIndex: unknown) => {
+    if (typeof fromIndex !== 'number' || typeof toIndex !== 'number') {
+      throw new Error('インデックスが不正です')
+    }
+    rejectWhileRunning()
+    markerStore.reorder(fromIndex, toIndex)
   })
 
   ipcMain.handle(IpcChannels.cursorGetPosition, () => screen.getCursorScreenPoint())

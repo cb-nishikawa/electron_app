@@ -24,6 +24,9 @@ const api: LiveLensApi = {
   moveMarker: (id, point) => ipcRenderer.invoke(IpcChannels.markerMove, id, point),
   removeMarker: (id) => ipcRenderer.invoke(IpcChannels.markerRemove, id),
   clearMarkers: () => ipcRenderer.invoke(IpcChannels.markerClear),
+  addMarker: (itemType) => ipcRenderer.invoke(IpcChannels.markerAdd, null, itemType),
+  reorderMarkers: (fromIndex, toIndex) =>
+    ipcRenderer.invoke(IpcChannels.markerReorder, fromIndex, toIndex),
   onMarkersChanged: (listener) => subscribe<Marker[]>(IpcChannels.markersChanged, listener),
   getCursorPosition: () => ipcRenderer.invoke(IpcChannels.cursorGetPosition),
   getRunState: () => ipcRenderer.invoke(IpcChannels.runGetState),

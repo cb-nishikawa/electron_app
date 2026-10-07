@@ -240,6 +240,7 @@ code {
 .marker-row {
   padding: 6px 0;
   border-top: 1px solid var(--border);
+  touch-action: none;
 }
 
 .marker-row:first-child {
@@ -272,6 +273,13 @@ code {
 
 .marker-row__wait input {
   width: 56px;
+}
+
+.marker-row__text {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 4px;
+  font: inherit;
 }
 
 .marker-row--done .marker-list__no {
@@ -332,6 +340,13 @@ code {
   font-weight: 700;
   line-height: 22px;
   text-align: center;
+}
+
+.marker-list__drag {
+  color: var(--muted);
+  font-size: 10px;
+  cursor: grab;
+  user-select: none;
 }
 
 .marker-list__label {

@@ -57,6 +57,9 @@ export type ClickActionType = (typeof CLICK_ACTION_TYPES)[number]
 export const DEFAULT_WAIT_AFTER_MS = 1000
 export const MAX_WAIT_AFTER_MS = 60000
 
+export const ACTION_ITEM_TYPES = ['click', 'text', 'hotkey', 'delay'] as const
+export type ActionItemType = (typeof ACTION_ITEM_TYPES)[number]
+
 export type Marker = {
   id: string
   label: string
@@ -64,9 +67,19 @@ export type Marker = {
   action: ClickActionType
   /** 操作後、次のマーカーへ進むまでの待機時間 */
   waitAfterMs: number
+  /** 新形式の項目タイプ（後方互換のため省略可） */
+  itemType?: ActionItemType
+  /** テキスト入力用 */
+  text?: string
+  /** ホットキー用 */
+  keys?: string[]
+  /** 遅延用（ms） */
+  delayMs?: number
 }
 
-export type MarkerPatch = Partial<Pick<Marker, 'action' | 'waitAfterMs'>>
+export type MarkerPatch = Partial<
+  Pick<Marker, 'action' | 'waitAfterMs' | 'itemType' | 'text' | 'keys' | 'delayMs'>
+>
 
 export type RunStatus = 'idle' | 'running' | 'paused' | 'error'
 
@@ -108,6 +121,8 @@ export type LiveLensApi = {
   moveMarker: (id: string, point: ScreenPoint) => Promise<void>
   removeMarker: (id: string) => Promise<void>
   clearMarkers: () => Promise<void>
+  addMarker: (itemType?: string) => Promise<Marker | null>
+  reorderMarkers: (fromIndex: number, toIndex: number) => Promise<void>
   onMarkersChanged: (listener: (markers: Marker[]) => void) => Unsubscribe
   getCursorPosition: () => Promise<ScreenPoint>
   getRunState: () => Promise<RunState>
