@@ -29,6 +29,8 @@ const api: LiveLensApi = {
     ipcRenderer.invoke(IpcChannels.markerReorder, fromIndex, toIndex),
   onMarkersChanged: (listener) => subscribe<Marker[]>(IpcChannels.markersChanged, listener),
   getCursorPosition: () => ipcRenderer.invoke(IpcChannels.cursorGetPosition),
+  setMenuShortcutsIgnored: (ignore) =>
+    ipcRenderer.invoke(IpcChannels.menuSetShortcutsIgnored, ignore),
   getRunState: () => ipcRenderer.invoke(IpcChannels.runGetState),
   startRun: () => ipcRenderer.invoke(IpcChannels.runStart),
   pauseRun: () => ipcRenderer.invoke(IpcChannels.runPause),

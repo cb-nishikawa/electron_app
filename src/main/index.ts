@@ -45,6 +45,9 @@ app.whenReady().then(() => {
     onStart: () => {
       modeManager.setMode('run')
       registerRunStopShortcut(runner)
+      // ▶ を押した操作パネルからフォーカスを外し、直前まで使っていたアプリへ戻す。
+      // テキスト / ホットキーは「実行開始時点でフォーカスしているウィンドウ」へ入力するため
+      BrowserWindow.getFocusedWindow()?.blur()
     },
     onFinish: () => {
       unregisterRunStopShortcut()

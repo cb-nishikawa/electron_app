@@ -14,6 +14,7 @@ export const IpcChannels = {
   markerReorder: 'marker:reorder',
   markersChanged: 'markers:changed',
   cursorGetPosition: 'cursor:get-position',
+  menuSetShortcutsIgnored: 'menu:set-shortcuts-ignored',
   runGetState: 'run:get-state',
   runStart: 'run:start',
   runPause: 'run:pause',

@@ -282,6 +282,11 @@ code {
   font: inherit;
 }
 
+.marker-row__text.is-capturing {
+  outline: 2px solid #ff4060;
+  outline-offset: -1px;
+}
+
 .marker-row--done .marker-list__no {
   background: #40c878;
 }

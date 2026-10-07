@@ -1,9 +1,17 @@
+import { useEffect, useState } from 'react'
 import {
   CLICK_ACTION_TYPES,
   MAX_WAIT_AFTER_MS,
   type ClickActionType,
   type Marker
 } from '@shared/types'
+import {
+  formatHotkey,
+  isModifierKeyName,
+  keyNameFromCode,
+  keyNameFromEventKey,
+  normalizeKeyNames
+} from '@shared/hotkey'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
@@ -31,6 +39,60 @@ function MarkerRow({
     id: marker.id
   })
 
+  const [capturing, setCapturing] = useState(false)
+  const [previewKeys, setPreviewKeys] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!capturing) return
+    const pressed = new Map<string, string>()
+    let combo: string[] = []
+
+    const onKeyDown = (e: KeyboardEvent): void => {
+      e.preventDefault()
+      e.stopPropagation()
+      const name = keyNameFromCode(e.code) ?? keyNameFromEventKey(e.key)
+      if (!name) return
+      // 単独の Esc はキャンセル。ほかのキーと一緒に押されたら組み合わせの一部として扱う
+      if (name === 'Escape' && pressed.size === 0) {
+        setCapturing(false)
+        return
+      }
+      pressed.set(e.code, name)
+      combo = normalizeKeyNames([...pressed.values()])
+      setPreviewKeys(combo)
+    }
+
+    const onKeyUp = (e: KeyboardEvent): void => {
+      e.preventDefault()
+      const isLastKey = pressed.size === 1 && pressed.has(e.code)
+      pressed.delete(e.code)
+
+      if (!isLastKey) {
+        combo = normalizeKeyNames([...pressed.values()])
+        setPreviewKeys(combo)
+        return
+      }
+
+      // 全キーがリリースされた。修飾キーだけなら確定せず次の入力待ちに戻る
+      if (combo.length === 0 || combo.every(isModifierKeyName)) {
+        pressed.clear()
+        combo = []
+        setPreviewKeys([])
+        return
+      }
+      api.updateMarker(marker.id, { keys: combo })
+      setCapturing(false)
+    }
+
+    document.addEventListener('keydown', onKeyDown, true)
+    document.addEventListener('keyup', onKeyUp, true)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown, true)
+      document.removeEventListener('keyup', onKeyUp, true)
+      api.setMenuShortcutsIgnored(false)
+    }
+  }, [api, capturing, marker.id])
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -53,16 +115,6 @@ function MarkerRow({
 
   const commitText = (value: string): void => {
     if (value !== marker.text) api.updateMarker(marker.id, { text: value })
-  }
-
-  const commitKeys = (value: string): void => {
-    const keys = value
-      .split(/[\s+,]+/)
-      .map((k) => k.trim())
-      .filter((k) => k.length > 0)
-    if (JSON.stringify(keys) !== JSON.stringify(marker.keys ?? [])) {
-      api.updateMarker(marker.id, { keys })
-    }
   }
 
   const itemType = marker.itemType ?? 'click'
@@ -130,12 +182,24 @@ function MarkerRow({
         {itemType === 'hotkey' && (
           <input
             type="text"
-            className="marker-row__text"
-            defaultValue={(marker.keys ?? []).join('+')}
+            className={capturing ? 'marker-row__text is-capturing' : 'marker-row__text'}
+            readOnly
+            value={capturing ? previewKeys.join('+') : formatHotkey(marker.keys ?? [])}
             disabled={locked}
-            placeholder="例: Ctrl+C"
-            onBlur={(e) => commitKeys(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && commitKeys(e.currentTarget.value)}
+            placeholder={
+              capturing ? 'キーを押してください（Esc でキャンセル）' : 'クリックしてキーを押す'
+            }
+            onClick={() => {
+              if (!locked && !capturing) {
+                // キャプチャ開始時に effect が再実行され、押下状態は作り直される
+                setPreviewKeys([])
+                setCapturing(true)
+                api.setMenuShortcutsIgnored(true)
+              }
+            }}
+            onBlur={() => {
+              if (capturing) setCapturing(false)
+            }}
           />
         )}
         {itemType === 'delay' && (

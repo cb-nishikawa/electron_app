@@ -108,7 +108,8 @@ function ControlApp(): React.JSX.Element {
     }
   }, [addMenuOpen])
 
-  const sensors = useSensors(useSensor(PointerSensor))
+  // 少しでも動かないとドラッグを開始しない。入力欄のクリックを優先する
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   const handleDragEnd = (event: DragEndEvent): void => {
     const { active, over } = event

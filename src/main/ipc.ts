@@ -1,9 +1,14 @@
 import { ipcMain, screen, type BrowserWindow } from 'electron'
 import { IpcChannels } from '@shared/ipcChannels'
 import {
+  ACTION_ITEM_TYPES,
   CLICK_ACTION_TYPES,
+  MAX_HOTKEY_KEYS,
+  MAX_KEY_NAME_LENGTH,
+  MAX_TEXT_LENGTH,
   MAX_WAIT_AFTER_MS,
   OVERLAY_MODES,
+  type ActionItemType,
   type MarkerPatch,
   type OverlayMode,
   type OverlayTargetRequest,
@@ -39,17 +44,43 @@ function isTargetRequest(value: unknown): value is OverlayTargetRequest {
   return kind === 'window' && typeof windowId === 'number' && Number.isFinite(windowId)
 }
 
+function isMillisInRange(value: unknown): value is number {
+  return (
+    typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= MAX_WAIT_AFTER_MS
+  )
+}
+
+const MARKER_PATCH_KEYS = ['action', 'waitAfterMs', 'itemType', 'text', 'keys', 'delayMs']
+
 function isMarkerPatch(value: unknown): value is MarkerPatch {
   if (typeof value !== 'object' || value === null) return false
-  const { action, waitAfterMs, ...rest } = value as Record<string, unknown>
-  if (Object.keys(rest).length > 0) return false
+  const record = value as Record<string, unknown>
+  if (Object.keys(record).some((key) => !MARKER_PATCH_KEYS.includes(key))) return false
+
+  const { action, waitAfterMs, itemType, text, keys, delayMs } = record
   if (action !== undefined && !(CLICK_ACTION_TYPES as readonly unknown[]).includes(action)) {
     return false
   }
-  if (waitAfterMs !== undefined) {
-    if (typeof waitAfterMs !== 'number' || !Number.isFinite(waitAfterMs)) return false
-    if (waitAfterMs < 0 || waitAfterMs > MAX_WAIT_AFTER_MS) return false
+  if (waitAfterMs !== undefined && !isMillisInRange(waitAfterMs)) return false
+  if (itemType !== undefined && !(ACTION_ITEM_TYPES as readonly unknown[]).includes(itemType)) {
+    return false
   }
+  if (text !== undefined) {
+    if (typeof text !== 'string') return false
+    if (text.length > MAX_TEXT_LENGTH) return false
+  }
+  if (keys !== undefined) {
+    if (!Array.isArray(keys)) return false
+    if (keys.length > MAX_HOTKEY_KEYS) return false
+    if (
+      keys.some(
+        (key) => typeof key !== 'string' || key.length === 0 || key.length > MAX_KEY_NAME_LENGTH
+      )
+    ) {
+      return false
+    }
+  }
+  if (delayMs !== undefined && !isMillisInRange(delayMs)) return false
   return true
 }
 
@@ -103,18 +134,18 @@ export function registerIpc({
   ipcMain.handle(IpcChannels.markerList, () => markerStore.list())
 
   ipcMain.handle(IpcChannels.markerAdd, (event, clientPoint: unknown, itemType?: unknown) => {
-    if (event.sender !== overlay.webContents) return null
-    const { mode, target } = modeManager.getState()
+    const allowedType = (value: unknown): value is ActionItemType =>
+      typeof value === 'string' && (ACTION_ITEM_TYPES as readonly string[]).includes(value)
 
-    const allowedType = (value: unknown): value is 'click' | 'text' | 'hotkey' | 'delay' =>
-      typeof value === 'string' && ['click', 'text', 'hotkey', 'delay'].includes(value)
-
-    // 手動追加（+ボタン）: clientPoint が null の場合
+    // 手動追加（+ボタン）: clientPoint が null の場合。操作パネルからの呼び出しなので送信元は問わない
     if (clientPoint === null) {
+      rejectWhileRunning()
       const type = allowedType(itemType) ? itemType : 'text'
       return markerStore.add(undefined, type)
     }
 
+    if (event.sender !== overlay.webContents) return null
+    const { mode, target } = modeManager.getState()
     if (mode !== 'record') return null
     if (!isScreenPoint(clientPoint)) throw new Error('座標が不正です')
 
@@ -165,8 +196,9 @@ export function registerIpc({
 
     const marker = markerStore.list().find((m) => m.id === id)
     if (!marker) throw new Error('マーカーが見つかりません')
+    if (!marker.target) throw new Error('この項目は位置を持ちません')
 
-    const { target } = marker
+    const target = marker.target
     if (target.type === 'windowCoordinate') {
       // オーバーレイは対象ウィンドウに重なっているので、ローカル座標がそのままウィンドウ内の相対座標になる
       markerStore.updateTarget(id, {
@@ -210,6 +242,12 @@ export function registerIpc({
   })
 
   ipcMain.handle(IpcChannels.cursorGetPosition, () => screen.getCursorScreenPoint())
+
+  // ホットキーのキャプチャ中は Cmd/Ctrl+C などのメニューショートカットを奪われないようにする
+  ipcMain.handle(IpcChannels.menuSetShortcutsIgnored, (event, ignore: unknown) => {
+    if (typeof ignore !== 'boolean') throw new Error('ignore は boolean で指定してください')
+    event.sender.setIgnoreMenuShortcuts(ignore)
+  })
 
   ipcMain.handle(IpcChannels.runGetState, () => runner.getState())
   ipcMain.handle(IpcChannels.runStart, () => runner.run())

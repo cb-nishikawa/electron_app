@@ -62,6 +62,19 @@ export class AutomationRunner {
     const markers = this.deps.getMarkers()
     if (markers.length === 0) throw new Error('実行するマーカーがありません')
 
+    const invalid = markers.find((marker) => {
+      if ((marker.itemType ?? 'click') === 'click') return !marker.target
+      if (marker.itemType === 'hotkey') return (marker.keys ?? []).length === 0
+      return false
+    })
+    if (invalid) {
+      throw new Error(
+        (invalid.itemType ?? 'click') === 'click'
+          ? `「${invalid.label}」に操作位置がありません`
+          : `「${invalid.label}」のホットキーが設定されていません`
+      )
+    }
+
     this.markers = markers
     this.stopRequested = false
     this.paused = false
@@ -145,16 +158,36 @@ export class AutomationRunner {
   }
 
   private async executeStep(marker: Marker): Promise<void> {
-    const point = await this.resolvePoint(marker)
-    if (this.stopRequested) return
-    this.update({ currentPoint: point })
+    const itemType = marker.itemType ?? 'click'
+
+    if (itemType === 'delay') {
+      await this.wait(marker.delayMs ?? 0)
+      return
+    }
+
+    if (itemType === 'click') {
+      const point = await this.resolvePoint(marker)
+      if (this.stopRequested) return
+      this.update({ currentPoint: point })
+      await sleep(BEFORE_ACTION_MS)
+      if (this.stopRequested) return
+      await this.deps.controller.perform(marker.action, point)
+      return
+    }
+
+    // テキスト / ホットキーはマウスを動かさず、フォーカスしているウィンドウへ入力する
     await sleep(BEFORE_ACTION_MS)
     if (this.stopRequested) return
-    await this.deps.controller.perform(marker.action, point)
+    if (itemType === 'text') {
+      await this.deps.controller.typeText(marker.text ?? '')
+      return
+    }
+    await this.deps.controller.pressHotkey(marker.keys ?? [])
   }
 
   private async resolvePoint(marker: Marker): Promise<ScreenPoint> {
     const { target } = marker
+    if (!target) throw new Error(`「${marker.label}」に操作位置がありません`)
     if (target.type === 'coordinate') return { x: target.x, y: target.y }
 
     const tracked = this.deps.getTrackedWindow()

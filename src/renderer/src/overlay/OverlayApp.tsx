@@ -6,6 +6,8 @@ import { useLiveLensState } from '../shared/useLiveLensState'
 import { useRunState } from '../shared/useRunState'
 
 function belongsToTarget(marker: Marker, target: OverlayTarget): boolean {
+  // テキスト / ホットキー / 遅延の項目は座標を持たない
+  if (!marker.target) return false
   if (target.kind === 'screen') return marker.target.type === 'coordinate'
   return marker.target.type === 'windowCoordinate' && isSameApp(marker.target.window, target.window)
 }
@@ -13,6 +15,7 @@ function belongsToTarget(marker: Marker, target: OverlayTarget): boolean {
 /** オーバーレイ内での描画位置。windowCoordinate はオーバーレイが対象ウィンドウに重なっているので相対座標のまま */
 function localPosition(marker: Marker, state: OverlayState): ScreenPoint {
   const { target } = marker
+  if (!target) return { x: 0, y: 0 }
   if (target.type === 'windowCoordinate') return { x: target.x, y: target.y }
   return { x: target.x - state.bounds.x, y: target.y - state.bounds.y }
 }
@@ -122,7 +125,9 @@ function MarkerPin({
     <div
       className={`marker marker--${state.mode}`}
       style={{ left: left + dragDelta.x, top: top + dragDelta.y }}
-      title={`${marker.label} (${marker.target.x}, ${marker.target.y})`}
+      title={
+        marker.target ? `${marker.label} (${marker.target.x}, ${marker.target.y})` : marker.label
+      }
       onContextMenu={handleContextMenu}
       onPointerDown={editable ? handlePointerDown : undefined}
       onPointerMove={editable ? handlePointerMove : undefined}

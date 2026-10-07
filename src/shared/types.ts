@@ -56,6 +56,12 @@ export type ClickActionType = (typeof CLICK_ACTION_TYPES)[number]
 
 export const DEFAULT_WAIT_AFTER_MS = 1000
 export const MAX_WAIT_AFTER_MS = 60000
+/** テキスト項目の最大文字数 */
+export const MAX_TEXT_LENGTH = 1000
+/** ホットキー項目の最大キー数 */
+export const MAX_HOTKEY_KEYS = 8
+/** キー名の最大文字数 */
+export const MAX_KEY_NAME_LENGTH = 16
 
 export const ACTION_ITEM_TYPES = ['click', 'text', 'hotkey', 'delay'] as const
 export type ActionItemType = (typeof ACTION_ITEM_TYPES)[number]
@@ -63,7 +69,8 @@ export type ActionItemType = (typeof ACTION_ITEM_TYPES)[number]
 export type Marker = {
   id: string
   label: string
-  target: ClickTarget
+  /** クリック項目のみ座標を持つ。テキスト / ホットキー / 遅延はフォーカス中のウィンドウを操作する */
+  target?: ClickTarget
   action: ClickActionType
   /** 操作後、次のマーカーへ進むまでの待機時間 */
   waitAfterMs: number
@@ -125,6 +132,8 @@ export type LiveLensApi = {
   reorderMarkers: (fromIndex: number, toIndex: number) => Promise<void>
   onMarkersChanged: (listener: (markers: Marker[]) => void) => Unsubscribe
   getCursorPosition: () => Promise<ScreenPoint>
+  /** ホットキー入力のキャプチャ中だけ、操作パネルのメニューショートカットを無効化する */
+  setMenuShortcutsIgnored: (ignore: boolean) => Promise<void>
   getRunState: () => Promise<RunState>
   startRun: () => Promise<RunState>
   pauseRun: () => Promise<RunState>

@@ -23,7 +23,7 @@ export class MarkerStore {
     const marker: Marker = {
       id: randomUUID(),
       label: `操作対象 ${this.serial}`,
-      target: target as ClickTarget,
+      target,
       action: 'click',
       waitAfterMs: DEFAULT_WAIT_AFTER_MS,
       itemType: type
