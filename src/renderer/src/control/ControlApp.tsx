@@ -4,9 +4,7 @@ import { useLiveLensState } from '../shared/useLiveLensState'
 import { useRunState } from '../shared/useRunState'
 import MarkerRow, { type MarkerRunMark } from './MarkerRow'
 import ModeSelect, { type PanelView } from './ModeSelect'
-import RunSection from './RunSection'
 import TargetSection from './TargetSection'
-import { useCursorPosition } from './useCursorPosition'
 import { toMessage } from '../shared/ipcError'
 import {
   DndContext,
@@ -59,7 +57,6 @@ function runMarkOf(marker: Marker, run: RunState | null): MarkerRunMark {
 function ControlApp(): React.JSX.Element {
   const { state, markers } = useLiveLensState()
   const run = useRunState()
-  const cursor = useCursorPosition()
   const api = window.liveLens
   const running = !!run && run.status !== 'idle'
   const [view, setView] = useState<PanelView>('record')
@@ -133,13 +130,6 @@ function ControlApp(): React.JSX.Element {
         <div className="control__record">
           <TargetSection state={state} disabled={running} />
 
-          <section className="section">
-            <p className="cursor">
-              カーソル座標: <code>{cursor ? `${cursor.x}, ${cursor.y}` : '—'}</code>
-            </p>
-            <RunSection run={run} markerCount={markers.length} />
-          </section>
-
           <section className="section section--grow">
             <div className="section__title">
               <h2>操作対象（{markers.length}）</h2>
@@ -184,7 +174,8 @@ function ControlApp(): React.JSX.Element {
                     <div className="menu-dropdown">
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation()
                           api.addMarker('text')
                           setAddMenuOpen(false)
                         }}
@@ -193,7 +184,8 @@ function ControlApp(): React.JSX.Element {
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation()
                           api.addMarker('hotkey')
                           setAddMenuOpen(false)
                         }}
@@ -202,7 +194,8 @@ function ControlApp(): React.JSX.Element {
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation()
                           api.addMarker('delay')
                           setAddMenuOpen(false)
                         }}

@@ -178,7 +178,7 @@ export class AutomationRunner {
     const found = await findWindow()
     let { window } = found
     if (!found.frontmost) {
-      await this.deps.controller.activate(window)
+      // avoid stealing focus
       await sleep(ACTIVATE_SETTLE_MS)
       window = (await findWindow()).window
     }

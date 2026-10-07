@@ -2,7 +2,6 @@ import {
   CLICK_ACTION_TYPES,
   MAX_WAIT_AFTER_MS,
   type ClickActionType,
-  type ClickTarget,
   type Marker
 } from '@shared/types'
 import { useSortable } from '@dnd-kit/sortable'
@@ -15,11 +14,6 @@ const ACTION_LABELS: Record<ClickActionType, string> = {
 }
 
 export type MarkerRunMark = 'done' | 'current' | null
-
-function targetScope(target?: ClickTarget): string {
-  if (!target) return '—'
-  return target.type === 'windowCoordinate' ? target.window.ownerName : '画面'
-}
 
 function MarkerRow({
   marker,
@@ -89,7 +83,6 @@ function MarkerRow({
           {runMark === 'done' ? '✓' : runMark === 'current' ? '▶' : index + 1}
         </span>
         <span className="marker-list__label">{marker.label}</span>
-        <span className="marker-list__scope">{targetScope(marker.target)}</span>
         {marker.target && (
           <code className="marker-list__pos">
             {marker.target.x}, {marker.target.y}

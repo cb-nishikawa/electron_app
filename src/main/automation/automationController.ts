@@ -1,19 +1,15 @@
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import { screen, systemPreferences } from 'electron'
-import type { AppWindowInfo, ClickActionType, ScreenPoint } from '@shared/types'
+import type { ClickActionType, ScreenPoint } from '@shared/types'
 
 export interface AutomationController {
   /** OS 操作を実行できる状態か確認する。できない場合は理由を返す */
   ensureReady(): string | null
   /** 対象ウィンドウを前面に出す */
-  activate(window: AppWindowInfo): Promise<void>
+  activate(): Promise<void>
   perform(action: ClickActionType, point: ScreenPoint): Promise<void>
 }
 
 type NutJs = typeof import('@nut-tree-fork/nut-js')
-
-const execFileAsync = promisify(execFile)
 
 let nutJs: Promise<NutJs> | null = null
 
@@ -35,22 +31,8 @@ export class ForegroundDriver implements AutomationController {
     return null
   }
 
-  async activate(window: AppWindowInfo): Promise<void> {
-    const { Window, providerRegistry } = await loadNutJs()
-    try {
-      // windowId は get-windows と libnut で共通（macOS: CGWindowID / Windows: HWND）
-      if (await new Window(providerRegistry, window.windowId).focus()) return
-    } catch {
-      // 下のフォールバックへ
-    }
-    if (process.platform !== 'darwin') return
-    // 同じアプリが複数起動していると別インスタンスが前面に出ることがあるので最後の手段
-    const args = window.bundleId
-      ? ['-b', window.bundleId]
-      : window.path?.endsWith('.app')
-        ? ['-a', window.path]
-        : null
-    if (args) await execFileAsync('open', args)
+  async activate(): Promise<void> {
+    // 実行時にマウスフォーカスが移動しないようにするため、アクティベートは行わない
   }
 
   async perform(action: ClickActionType, point: ScreenPoint): Promise<void> {
